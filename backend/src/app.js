@@ -22,6 +22,9 @@ import userRouter from "./routes/user.routes.js";
 import listingRouter from "./routes/listings.routes.js";
 
 // routes declaration
+app.get('/', (req, res) => {
+  res.send('Hello World!')
+})
 app.use("/api/users", userRouter)
 app.use("/api/listings", listingRouter)
 export { app }
