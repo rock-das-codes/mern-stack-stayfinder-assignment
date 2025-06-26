@@ -3,73 +3,66 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import {ApiError} from "../utils/ApiErrors.js"
 import {asynchandler} from "../utils/asynchandler.js"
 
-const createListing = asynchandler(async (req,res)=>{
-    const {title,name,description,images,address,price,userRef} = req.body
-    if(!title || ! name || !description || !images || !address || !price || !userRef){
-        throw new ApiError(401,"all fields are required")
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const createListing = asynchandler(async (req, res) => {
+    const { title, name, description, images, address, price } = req.body;
+    const userRef = req.user._id; // Get from authenticated user
+
+    if (!title || !name || !description || !images || !address || !price) {
+        throw new ApiError(401, "all fields are required");
     }
-    if(typeof(price)!=number){
-        throw new ApiError(400,"price cannot be a letter")
+    if (typeof price !== "number") {
+        throw new ApiError(400, "price cannot be a letter");
     }
-    const listing = await Listing.create({title,name,description,images,address,price,userRef})
-    const listCreated = Listing.findById(listing._id)
-    if(!listCreated){
-        throw new ApiError(401,"error while creating the listing")
+    const listing = await Listing.create({ title, name, description, images, address, price, userRef });
+    const listCreated = await Listing.findById(listing._id);
+    if (!listCreated) {
+        throw new ApiError(401, "error while creating the listing");
     }
     return res
-    .status(200)
-    .json(new ApiResponse(200,listCreated,"succesfully created"))
+        .status(200)
+        .json(new ApiResponse(200, listCreated, "successfully created"));
 })
 
-const getUserListing = asynchandler(async (req,res)=>{
-    const listing = Listing.find(
-        {userRef:req.params.id}
-    )
-    if(!listing){
-        throw new ApiError(401, "no list found so far")
-    }
-    return res
-    .status(200)
-    .json(new ApiResponse(200,listing,"list fetched succesfully"))
-})
-const deleteListing = asynchandler(async (res,req)=>{
-     const listing = await Listing.findById(req.params.id);
+const getUserListing = asynchandler(async (req, res) => {
+    const listings = await Listing.find({ userRef: req.user._id });
+    return res.status(200).json(new ApiResponse(200, listings, "User listings fetched"));
+});
+
+const deleteListing = asynchandler(async (req, res) => {
+    const listing = await Listing.findById(req.params.id);
     if (!listing) {
-        throw new ApiError(404, "Listing not found")
+        throw new ApiError(404, "Listing not found");
     }
-    if (req.user.id !== listing.userRef) {
-        throw new ApiError(401, "You are unauthorized to perform this action")
+    if (req.user._id.toString() !== listing.userRef.toString()) {
+        throw new ApiError(401, "You are unauthorized to perform this action");
     }
     await Listing.findByIdAndDelete(req.params.id);
     return res
         .status(200)
-        .json(new ApiResponse(200, {}, "Listing deleted successfully"))
-
-
-})
+        .json(new ApiResponse(200, {}, "Listing deleted successfully"));
+});
 
 const updateListing = asynchandler(async (req, res) => {
-
     const listing = await Listing.findById(req.params.id);
     if (!listing) {
-        throw new ApiError(404, "Listing couldn't be found")
-    };
-
-    if (req.user.id !== listing.userRef) {
-        throw new ApiError(401, "Unauthorized to access this request of editing a listing")
-    };
-
+        throw new ApiError(404, "Listing couldn't be found");
+    }
+    if (req.user._id.toString() !== listing.userRef.toString()) {
+        throw new ApiError(401, "Unauthorized to access this request of editing a listing");
+    }
     const updatedListing = await Listing.findByIdAndUpdate(
         req.params.id,
         req.body,
         { new: true }
-    )
-
+    );
     return res
         .status(200)
-        .json(new ApiResponse(200, updatedListing, "Listing has been successfully updated"))
-
-})
+        .json(new ApiResponse(200, updatedListing, "Listing has been successfully updated"));
+});
 
 const getListingInfo = asynchandler(async (req, res) => {
     const listingDetails = await Listing.findById(req.params.id);
@@ -110,21 +103,21 @@ const getAllListings = asynchandler(async (req, res) => {
 
 
         const searchTerm = req.query.searchTerm || "";
+        const safeSearchTerm = escapeRegex(searchTerm);
+
         const sort = req.query.sort || "createdAt";
         const order = req.query.order || "desc";
 
-        const listings = await Listing.find(
-            {
-                name: {
-                    $regex: searchTerm, /* regex will enable find everywhere in the data */
-                    $options: 'i' /* ignores upper and lower case */
-                },
-                offer,
-                furnished,
-                parking,
-                type
-            }
-        )
+        const listings = await Listing.find({
+            name: {
+                $regex: safeSearchTerm,
+                $options: 'i'
+            },
+            offer,
+            furnished,
+            parking,
+            type
+        })
             .sort({ [sort]: order })
             .limit(limit)
             .skip(startIndex);

@@ -5,7 +5,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 const router = Router()
 
 router.route("/create-listing").post(verifyJWT, createListing)
-router.route("/user-listings/:id").get(verifyJWT, getUserListing)
+router.route("/user-listings").get(verifyJWT, getUserListing)
 router.route("/delete-listing/:id").post(verifyJWT, deleteListing)
 router.route("/update-listing/:id").post(verifyJWT, updateListing)
 router.route("/get-listing-info/:id").get(getListingInfo)

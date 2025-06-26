@@ -27,4 +27,14 @@ app.get('/', (req, res) => {
 })
 app.use("/api/users", userRouter)
 app.use("/api/listings", listingRouter)
+
+// Global error handler (should be after all routes)
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
+});
+
 export { app }
