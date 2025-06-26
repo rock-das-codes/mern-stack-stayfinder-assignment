@@ -11,6 +11,7 @@ const createListing = asynchandler(async (req,res)=>{
     if(typeof(price)!=number){
         throw new ApiError(400,"price cannot be a letter")
     }
+    //whats hapenning?
     const listing = await Listing.create({title,name,description,images,address,price,userRef})
     const listCreated = Listing.findById(listing._id)
     if(!listCreated){
