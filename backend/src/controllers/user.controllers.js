@@ -28,14 +28,13 @@ const registerUser = asynchandler(async (req,res)=>{
      if (!avatar) {
         throw new ApiError(400, "Avatar file is compulsory")
     }
-    const user = User.create({
-        email:email,
-        username:username.toLowerCase(),
+    const user = await User.create({
+        email: email,
+        username: username.toLowerCase(),
         avatar: avatar.url,
         password,
-     
-    })
-     const userCreated = await User.findById(user._id).select("-password -refreshToken");
+    });
+    const userCreated = await User.findById(user._id).select("-password -refreshToken");
     if (!userCreated) {
         throw new ApiError(500, "Something went wrong while registering the user..")
     }
@@ -59,25 +58,26 @@ const getRefreshTokenAndAccessToken = async (userid)=>{
     return {refreshToken},{accesToken}
 }
 
-const login = async (req,res)=>{
+const login =asynchandler( async (req,res)=>{
+    console.log("Login request receive", req.body);
    const {email,password} = req.body
-   if(!email || !password){
-    throw new ApiError("Email or Password is required")
-
-   }
+   if (!email || !password) {
+    throw new ApiError(400, "Email or Password is required");
+}
    const existingUser = await User.findOne({email})
    if(!existingUser){
     throw new ApiError("Sorry, no registered user found. Please register.")
    }
    const passwordValidity =await existingUser.isPasswordcorrect(password)
    if(!passwordValidity){
-    throw new ApiError("Password donot match!")
+    throw new ApiError(401,"Password donot match!")
    }
    const {refreshToken,accesToken}= await getRefreshTokenAndAccessToken(existingUser._id)
-
+   existingUser.refreshtoken = refreshToken
+   
    const opts={
     httpOnly:true,
-    secure:true
+    secure: process.env.NODE_ENV === "production",
    }
    const loggedinUser = await User.findById(existingUser._id).select("-password -refreshtoken")
 
@@ -88,10 +88,10 @@ const login = async (req,res)=>{
    .json(new ApiResponse(
             200,
            
-            { user: loggedInUser, accessToken },
+            { user: loggedinUser, accesToken },
             "User logged-in successfully"
         ))
-}
+})
 const logout = asynchandler (async (req,res)=>{
     await User.findByIdAndUpdate(
        req.user._id, {
@@ -108,53 +108,53 @@ const logout = asynchandler (async (req,res)=>{
 
 const opts={
   httpOnly:true,
-  secure:true
+  secure: process.env.NODE_ENV === "production"
 }
 return res
 .status(200)
 .clearCookie("accessToken",opts)
 .clearCookie("refreshToken",opts)
-.json(new ApiResposne(200,{},"logged out successfully"))
+.json(new ApiResponse(200,{},"logged out successfully"))
 }
 )
 
 
-const refreshAccessToken= asynchandler(async (req,res)=>{
-    const incomingrefreshToken = req.body.refreshToken || req.cookies.refreshToken
-    if(!incomingrefreshToken){
-        throw new ApiError("Please Login again")
+const refreshAccessToken = asynchandler(async (req, res) => {
+    const incomingrefreshToken = req.body.refreshToken || req.cookies.refreshToken;
+    if (!incomingrefreshToken) {
+        throw new ApiError(401, "Please Login again");
     }
     try {
-        const checkRefreshToken = jwt.sign(incomingrefreshToken,process.env.REFRESH_TOKEN)
-        if(!checkRefreshToken){
-            throw new ApiError("NO valid refresh Token found")
+        // 1. Verify the refresh token
+        const checkRefreshToken = jwt.verify(incomingrefreshToken, process.env.REFRESH_TOKEN_SECRET);
 
+        // 2. Find the user by ID
+        const user = await User.findById(checkRefreshToken._id);
+        if (!user) {
+            throw new ApiError(401, "No user found");
         }
-        const user = User.findById(checkRefreshToken._id)
-        if(!user){
-            throw new ApiError(401,"No user found")
+
+        // 3. Compare the stored refresh token
+        console.log("user found", user.refreshtoken, incomingrefreshToken);
+        if (incomingrefreshToken !== user.refreshtoken) {
+            throw new Error("Refresh token expired or already used");
         }
-        if(incomingrefreshToken != user.refreshToken){
-            throw new Error("Refresh token expired or already user")
-        }
-        const {accessToken, refreshToken}= getRefreshTokenAndAccessToken(user._id)
-        const opts={
-        httpOnly:true,
-        secure:true
-        }
+
+        // 4. Generate new tokens
+        const { refreshToken, accesToken } = await getRefreshTokenAndAccessToken(user._id);
+        const opts = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production"
+        };
         return res
-        .status(200)
-        .cookie("refreshToken",refreshToken,opts)
-        .cookie("accessToken",accessToken,opts)
-        .json(new ApiResponse(200,user,"AccesToken Refreshed Successfully"))
-
-        
+            .status(200)
+            .cookie("refreshToken", refreshToken, opts)
+            .cookie("accessToken", accesToken, opts)
+            .json(new ApiResponse(200, user, "AccessToken Refreshed Successfully"));
     } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid refresh token")
-        
+        throw new ApiError(401, error?.message || "Invalid refresh token");
     }
-    
-})
+});
 
 const changePassword = asynchandler(async (req,res)=>{
     const {oldPassword,newPassword}= req.body
@@ -168,7 +168,7 @@ const changePassword = asynchandler(async (req,res)=>{
         await user.save({validateBeforeSave:false})
 
         return res
-        .staus(200)
+        .status(200)
         .json(new ApiResponse(200,{},"PASSWORD changed succesfully"))
     } catch (error) {
        throw new ApiError(401, error?.message || "Something went wrong")
@@ -247,12 +247,12 @@ const deleteUser = asynchandler(async (req,res)=>{
 
     const opts={
         httpOnly:true,
-        secure:true
+        secure: process.env.NODE_ENV === "production"
     }
     return res
     .status(200)
-     .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
+     .clearCookie("accessToken", opts)
+    .clearCookie("refreshToken", opts)
     .json(new ApiResponse(200, {}, "User deleted successfully.."))
 })
 

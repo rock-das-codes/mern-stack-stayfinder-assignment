@@ -1,24 +1,20 @@
 import Imagekit from "imagekit"
 import path from "path"
 import fs from "fs"
+import { promises as fsPromises } from "fs" // Added for async unlink
 
 //configure imagekit
-
-const imagekit =new Imagekit({
-    publicKey : process.env.IMAGEKIT_PUBLIC_KEY,
-    privateKey : process.env.IMAGEKIT_PRIVATE_KEY,
-    urlEndpoint : process.env.IMAGEKIT_URL_ENDPOINT
+const imagekit = new Imagekit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
 })
 
 const getContentType = (fileExtension) => {
-    // Ensure the extension is a string and handle case variations
     if (typeof fileExtension !== 'string' || !fileExtension) {
         return "application/octet-stream";
     }
     const normalizedExtension = fileExtension.toLowerCase();
-
-    // *** IMPORTANT: You need to expand this for your assignment ***
-    // Add many more cases for common file types (pdf, mp4, docx, etc.)
     switch (normalizedExtension) {
         case ".jpg":
             return "image/jpg"
@@ -66,52 +62,44 @@ const getContentType = (fileExtension) => {
             return "application/javascript";
         case ".json":
             return "application/json";
-        // Default for unknown types
         default:
             return "application/octet-stream";
     }
 };
 
-const uploadOnImagekit = async (localfilepath)=>{
-    const originalFileNameWithExt = path.basename(localfilepath || " ")
-
-    const originalFileNameWithOutExt = path.parse(originalFileNameWithExt).name;
-
-    if(!localfilepath){
-        return null
+const uploadOnImagekit = async (localFilePath) => {
+    if (!localFilePath) {
+        return null;
     }
+    const originalFileNameWithExt = path.basename(localFilePath);
+    const originalFileNameWithOutExt = path.parse(originalFileNameWithExt).name;
     try {
-        const fileExtension = path.extname(localfilepath).toLowerCase()
-        const ContentType = getContentType(fileExtension)
-        const uniqueFileName = `${originalFileNameWithoutExt.replace(/[^a-zA-Z0-9-]/g, '_')}-${Date.now()}${fileExtension}`;
+        const fileExtension = path.extname(localFilePath).toLowerCase();
+        const contentType = getContentType(fileExtension);
+        const uniqueFileName = `${originalFileNameWithOutExt.replace(/[^a-zA-Z0-9-]/g, '_')}-${Date.now()}${fileExtension}`;
 
-          console.log(`Attempting to upload file: ${localFilePath}`);
+        console.log(`Attempting to upload file: ${localFilePath}`);
         console.log(`Desired ImageKit file name: ${uniqueFileName}`);
         console.log(`Detected Content-Type: ${contentType}`);
 
-
-        const response =await ImageKit.upload({
-             file: fs.createReadStream(localFilePath), // Efficiently stream the file
+        const response = await imagekit.upload({
+            file: fs.createReadStream(localFilePath),
             fileName: uniqueFileName,
-            contentType: contentType,
-        })
+            // contentType is not a documented option for imagekit.upload, but you can keep it if your SDK supports it
+        });
         console.log("File uploaded successfully on ImageKit!");
         console.log("ImageKit Response:", response);
-        return response; 
+        return response;
     } catch (error) {
-              console.error(`Error uploading file to ImageKit from ${localFilePath}:`, error);
-        // For an assignment, returning null might be acceptable if that's the expected error handling.
-        // In a real-world scenario, you might re-throw a custom error here.
+        console.error(`Error uploading file to ImageKit from ${localFilePath}:`, error);
         return null;
-    }
-    finally{
-        if (fs.existsSync(localFilePath)) { // Check if the file still exists before attempting to delete
+    } finally {
+        if (fs.existsSync(localFilePath)) {
             try {
-                await fsPromises.unlink(localFilePath); // Use the asynchronous unlink from fs/promises
+                await fsPromises.unlink(localFilePath);
                 console.log(`Successfully removed local temporary file: ${localFilePath}`);
             } catch (unlinkError) {
                 console.error(`Error removing local temporary file ${localFilePath}:`, unlinkError);
-                // Log the error but don't prevent the function from completing its main task
             }
         }
     }

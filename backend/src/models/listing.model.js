@@ -20,7 +20,7 @@ var listingSchema = new mongoose.Schema({
 
     },
     images:{
-        type:String,
+        type:Array ,
         required:true,
         default:"https://picsum.photos/200/300"
     },
