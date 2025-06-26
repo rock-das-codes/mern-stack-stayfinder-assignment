@@ -60,16 +60,16 @@ backend/
 
 | Method | Path                                 | Auth        | Description                                 |
 |--------|--------------------------------------|-------------|---------------------------------------------|
-| POST   | `/api/user/register`                 | No          | Register a new user                         |
-| POST   | `/api/user/login`                    | No          | Login                                       |
-| POST   | `/api/user/logout`                   | JWT         | Logout                                      |
-| POST   | `/api/user/refresh-token`            | No          | Refresh access token                        |
-| POST   | `/api/user/update-password`          | JWT         | Change password                             |
-| GET    | `/api/user/current-user`             | JWT         | Get authenticated user details              |
-| POST   | `/api/user/update-details`           | JWT         | Update account details                      |
-| POST   | `/api/user/update-avatar`            | No          | Update user avatar (multipart/form-data)    |
-| POST   | `/api/user/delete-user`              | JWT         | Delete user account                         |
-| GET    | `/api/user/getUserInfo/:id`          | JWT         | Get public info for a user (by id)          |
+| POST   | `/api/users/register`                 | No          | Register a new user                         |
+| POST   | `/api/users/login`                    | No          | Login                                       |
+| POST   | `/api/users/logout`                   | JWT         | Logout                                      |
+| POST   | `/api/users/refresh-token`            | No          | Refresh access token                        |
+| POST   | `/api/users/update-password`          | JWT         | Change password                             |
+| GET    | `/api/users/current-user`             | JWT         | Get authenticated user details              |
+| POST   | `/api/users/update-details`           | JWT         | Update account details                      |
+| POST   | `/api/users/update-avatar`            | No          | Update user avatar (multipart/form-data)    |
+| POST   | `/api/users/delete-user`              | JWT         | Delete user account                         |
+| GET    | `/api/users/getUserInfo/:id`          | JWT         | Get public info for a user (by id)          |
 
 > **Note:**  
 > - **JWT** = Requires JSON Web Token authentication (via `Authorization` header).
